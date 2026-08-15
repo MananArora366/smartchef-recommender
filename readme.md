@@ -6,6 +6,42 @@ exclusions. Also generates a shopping list of what you are missing.
 
 ---
 
+## 🧰 Tech stack
+
+| | Role |
+| :--- | :--- |
+| **pandas** | Loads 58,782 recipes and does the ingredient matching and scoring |
+| **Python 3** (stdlib) | Everything else — the CLI, the filters, the shopping list |
+
+One dependency. The matching is set intersection over ingredient lists rather
+than anything learned, which is honest about what this is: a scoring function,
+not a model.
+
+---
+
+## ▶️ Usage
+
+```bash
+python "recipe recommender.py"
+```
+
+The program asks four things in order, then prints ranked results:
+
+| Prompt | Example |
+| :--- | :--- |
+| Your name | `Manan` |
+| Dietary preference | healthy · comfort food · vegetarian · vegan · quick & easy · low carb · desserts · none |
+| Allergies | `nuts, dairy` — applied as a **hard filter before scoring**, so an unsafe recipe can never surface however well it matches |
+| Ingredients you have | `chicken, rice, tomato, onion` |
+
+Results come back with a percentage match. Pick one and it prints the shopping
+list — the ingredients from that recipe you did not list.
+
+> ⚠️ Allergen filtering is keyword-based and **should not be relied on for real
+> allergy decisions**. See known limitations.
+
+---
+
 ## 🌟 What it does
 
 * 🥗 **Preference filtering** — healthy, comfort food, vegetarian, vegan, quick
