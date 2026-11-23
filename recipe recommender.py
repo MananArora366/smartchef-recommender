@@ -13,6 +13,7 @@ Features:
 - Shopping list generation
 """
 
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -33,23 +34,36 @@ PREFERENCES = {
 # Load Recipe Dataset
 # -----------------------------
 def load_recipes():
-    data_path = Path(__file__).resolve().parent / "recipes_final.csv"
-    if not data_path.exists():
+    base_dir = Path(__file__).resolve().parent
+    sample_path = base_dir / "recipes_sample.csv"
+    final_path = base_dir / "recipes_final.csv"
+
+    # Use sample if explicitly requested via --sample flag or if full dataset is absent
+    if "--sample" in sys.argv:
+        data_path = sample_path
+        print(f"📦 Running with synthetic sample dataset ({sample_path.name})")
+    elif final_path.exists():
+        data_path = final_path
+    elif sample_path.exists():
+        data_path = sample_path
+        print(f"ℹ️ 'recipes_final.csv' not found. Using synthetic sample dataset ({sample_path.name})")
+    else:
         raise FileNotFoundError(
-            f"Dataset not found: {data_path}. Please put recipes_final.csv in the same folder as this script."
+            f"Dataset not found in {base_dir}. Neither recipes_final.csv nor recipes_sample.csv is present."
         )
+
     recipes = pd.read_csv(data_path, encoding="utf-8")
 
     def parse_ingredients(value):
         if pd.isna(value):
             return []
         if isinstance(value, list):
-            return [str(item).strip().lower() for item in value]
+            return [str(item).strip().strip("'\"").lower() for item in value]
         if isinstance(value, str):
             cleaned = value.replace("[", "").replace("]", "")
-            parts = [part.strip() for part in cleaned.split(",") if part.strip()]
-            return [part.strip().lower() for part in parts]
-        return [str(value).strip().lower()]
+            parts = [part.strip().strip("'\"") for part in cleaned.split(",") if part.strip()]
+            return [part.strip().strip("'\"").lower() for part in parts if part.strip().strip("'\"")]
+        return [str(value).strip().strip("'\"").lower()]
 
     recipes["Cleaned_Ingredients"] = recipes["Cleaned_Ingredients"].apply(parse_ingredients)
     recipes["Instructions"] = recipes["Instructions"].fillna("")
@@ -145,14 +159,6 @@ def recommend_recipes(user_profile):
                 continue
 
         score = ingredient_match(user_profile.available_ingredients, recipe_ingredients)
-        if (
-            user_profile.preference not in {"surprise me", "no preference"}
-            and user_profile.preference in category_tags
-        ):
-            # Preference matches get a small ranking boost to make the top
-            # recommendations more intuitive for the user.
-            score += 15
-        score = min(score, 100)
 
         recommendations.append(
             {
@@ -174,7 +180,7 @@ def recommend_recipes(user_profile):
 def show_recommendations(user_profile, recommendations, total_recipes):
     filtered_count = len(recommendations)
     print(f"\n📊 Found {total_recipes} recipes.")
-    print(f"After filtering allergies, {filtered_count} recipes remain.")
+    print(f"After applying your filters, {filtered_count} recipes remain.")
 
     if not recommendations:
         print("\nNo recipes matched your preferences.")
